@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 40 20% 98%;
+    --foreground: 160 15% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 15% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 15% 10%;
+
+    --primary: 152 55% 28%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 30% 94%;
+    --secondary-foreground: 160 15% 10%;
+
+    --muted: 40 15% 93%;
+    --muted-foreground: 160 8% 45%;
+
+    --accent: 38 90% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 15% 89%;
+    --input: 40 15% 89%;
+    --ring: 152 55% 28%;
+
+    --radius: 0.75rem;
+
+    --turf-green: 152 55% 28%;
+    --turf-green-light: 152 40% 92%;
+    --turf-gold: 38 90% 50%;
+    --turf-gold-light: 38 80% 94%;
+    --turf-slate: 220 15% 20%;
+    --turf-sand: 35 30% 96%;
+    --turf-available: 142 70% 45%;
+    --turf-booked: 0 72% 51%;
+    --turf-unavailable: 220 10% 78%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 160 15% 10%;
+    --sidebar-primary: 152 55% 28%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 152 40% 92%;
+    --sidebar-accent-foreground: 152 55% 28%;
+    --sidebar-border: 40 15% 89%;
+    --sidebar-ring: 152 55% 28%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(4px);
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .scroll-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+
+  .stagger-1 { transition-delay: 80ms; }
+  .stagger-2 { transition-delay: 160ms; }
+  .stagger-3 { transition-delay: 240ms; }
+  .stagger-4 { transition-delay: 320ms; }
+  .stagger-5 { transition-delay: 400ms; }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-md;
+  }
+}
