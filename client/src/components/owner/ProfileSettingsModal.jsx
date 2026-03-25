@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { X, User, Phone, Save, Loader2, Building2 } from "lucide-react";
+import { X, User, Phone, Save, Loader2, Building2, KeyRound } from "lucide-react";
 import { updateUserProfile } from "../../services/firebase/userService";
+import { useAuth } from "../../context/AuthContext";
 import { toast } from "sonner";
 
 export default function ProfileSettingsModal({ user, onClose }) {
+  const { resetPassword } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.displayName || user?.name || "",
@@ -21,6 +23,18 @@ export default function ProfileSettingsModal({ user, onClose }) {
     } catch (error) {
       toast.error("Failed to update profile");
       console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      setLoading(true);
+      await resetPassword(user.email);
+      toast.success("Password reset email sent!");
+    } catch (error) {
+      toast.error("Failed to send reset email");
     } finally {
       setLoading(false);
     }
@@ -94,17 +108,29 @@ export default function ProfileSettingsModal({ user, onClose }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-6 py-3 rounded-xl border border-white/10 font-bold hover:bg-white/5 transition-all text-foreground"
+              className="flex-1 px-6 py-3 rounded-xl border border-white/10 font-bold hover:bg-white/5 transition-all text-foreground text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-[2] px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-[2] px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
               Save Changes
+            </button>
+          </div>
+
+          <div className="pt-6 border-t border-white/5">
+             <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest pl-1 mb-3">Security</p>
+             <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={loading}
+              className="w-full px-6 py-3 bg-white/5 border border-white/10 text-foreground rounded-xl font-bold hover:bg-white/10 transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              <KeyRound className="w-4 h-4 text-primary" /> Reset Password Via Email
             </button>
           </div>
         </form>

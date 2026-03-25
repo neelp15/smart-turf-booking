@@ -285,10 +285,10 @@ export default function Home() {
               <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-display font-bold text-xs">T</span>
               </div>
-              <span className="font-display font-semibold text-foreground">Smart Turf Booking</span>
+              <span className="font-display font-semibold text-foreground">Turf Connect</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2026 SmartTurfBooking. All rights reserved.
+              © 2026 Turf Connect. All rights reserved.
             </p>
           </div>
         </div>

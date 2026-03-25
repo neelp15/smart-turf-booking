@@ -26,7 +26,7 @@ export default function Navbar() {
               <span className="text-primary-foreground font-display font-bold text-sm">T</span>
             </div>
             <span className="font-display font-bold text-lg text-foreground">
-            Smart Turf Booking
+            Turf Connect
             </span>
           </Link>
 

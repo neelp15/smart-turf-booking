@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Navbar from "../../components/common/Navbar";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, KeyRound } from "lucide-react";
+import { sendOTP, verifyOTP } from "../../services/authService";
+import { toast } from "sonner";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -12,16 +14,21 @@ export default function Signup() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signup, isAuthenticated, role } = useAuth();
+  const [showOTP, setShowOTP] = useState(false); // New state for OTP step
+  const [otp, setOtp] = useState("");
+  
+  const { signup, isAuthenticated, role, setIsVerified } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // We only redirect if authenticated (firebase) AND we can assume signup implies verification happened first 
+    // but to be safe with the new ProtectedRoute, we should check a verified state if we had one here too.
     if (isAuthenticated) {
       navigate(role === "owner" ? "/owner/dashboard" : "/");
     }
   }, [isAuthenticated, role, navigate]);
 
-  const handleSubmit = async (e) => {
+  const handleRequestOTP = async (e) => {
     e.preventDefault();
     setError("");
     if (!name || !email || !password) { setError("Please fill all fields"); return; }
@@ -29,9 +36,49 @@ export default function Signup() {
     
     setLoading(true);
     try {
-      await signup(name, email, password, selectedRole);
+      await sendOTP(email, "signup");
+      setShowOTP(true);
+      toast.success("Verification code sent to your email!");
     } catch (err) {
-      setError(err.message || "Failed to create account");
+      setError(err.message || "Failed to send verification code");
+      toast.error(err.message || "Failed to send verification code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyAndSignup = async (e) => {
+    e.preventDefault();
+    if (!otp) { setError("Please enter the OTP"); return; }
+
+    setLoading(true);
+    try {
+      // 1. Verify OTP with our backend
+      await verifyOTP(email.trim(), otp, "signup");
+      
+      // 2. Mark as verified in context
+      setIsVerified(true);
+      
+      // 3. If valid, proceed with Firebase signup
+      await signup(name, email, password, selectedRole);
+      toast.success("Account created successfully!");
+    } catch (err) {
+      setError(err.message || "Failed to verify OTP or create account");
+      toast.error(err.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    try {
+      setLoading(true);
+      await sendOTP(email.trim(), "signup");
+      toast.success("New verification code sent!");
+      setError("");
+    } catch (err) {
+      setError(err.message || "Failed to resend code");
+      toast.error("Failed to resend code");
     } finally {
       setLoading(false);
     }
@@ -43,78 +90,128 @@ export default function Signup() {
       <div className="flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm animate-fade-up">
           <div className="text-center mb-8">
-            <h1 className="font-display text-2xl font-bold text-foreground">Create account</h1>
-            <p className="text-muted-foreground text-sm mt-1">Start booking turfs in seconds</p>
+            <h1 className="font-display text-2xl font-bold text-foreground">
+              {showOTP ? "Verify Email" : "Create account"}
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              {showOTP ? `Enter the code sent to ${email}` : "Start booking turfs in seconds"}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex bg-secondary rounded-xl p-1">
-              {["user", "owner"].map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setSelectedRole(r)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                    selectedRole === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                  }`}
-                >
-                  {r === "user" ? "Player" : "Turf Owner"}
-                </button>
-              ))}
-            </div>
+          {!showOTP ? (
+            <form onSubmit={handleRequestOTP} className="space-y-4">
+              <div className="flex bg-secondary rounded-xl p-1">
+                {["user", "owner"].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSelectedRole(r)}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
+                      selectedRole === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    }`}
+                  >
+                    {r === "user" ? "Player" : "Turf Owner"}
+                  </button>
+                ))}
+              </div>
 
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Rahul Sharma"
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
-              <div className="relative">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Full Name</label>
                 <input
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 8 characters"
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-10"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Rahul Sharma"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                 />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min 6 characters"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Sending Code..." : "Send Verification Code"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyAndSignup} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">OTP Code</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Enter 6-digit code"
+                    className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-10 tracking-[0.5em] text-center font-bold"
+                  />
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  onClick={() => setShowOTP(false)}
+                  className="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-border bg-card text-foreground hover:bg-secondary transition-colors"
                 >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-[2] py-2.5 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Verifying..." : "Verify & Signup"}
                 </button>
               </div>
-            </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:opacity-90 transition-opacity active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Creating account..." : "Create Account"}
-            </button>
-          </form>
+              
+              <button 
+                type="button"
+                disabled={loading}
+                onClick={handleResendOTP}
+                className="w-full text-center text-xs text-primary hover:underline mt-2 disabled:opacity-50"
+              >
+                Didn't receive the code? Resend OTP
+              </button>
+            </form>
+          )}
 
           <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account?{" "}

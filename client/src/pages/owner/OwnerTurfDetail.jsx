@@ -432,6 +432,30 @@ export default function OwnerTurfDetail() {
                   );
                 })}
               </div>
+
+              {/* Verdict Section */}
+              <div className="border-l border-white/10 pl-6 hidden md:block w-52 shrink-0">
+                <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-3">Overall Verdict</p>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-foreground mb-1 italic">
+                      {reviews.length === 0 ? "No data yet" : Number(avgRating) >= 4 ? "Highly Recommended!" : Number(avgRating) >= 3 ? "Solid Operations" : "Needs Improvement"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Based on user sentiment</p>
+                  </div>
+                  <div className="pt-2">
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2 opacity-60">Top Attributes</p>
+                    <div className="flex flex-wrap gap-1.5">
+                       {Number(avgRating) >= 4 && ["Top Quality", "Professional", "Punctual"].map(tag => (
+                         <span key={tag} className="text-[9px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md font-black italic">{tag}</span>
+                       ))}
+                       {Number(avgRating) < 4 && ["Standard", "Functional"].map(tag => (
+                         <span key={tag} className="text-[9px] px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded-md font-black italic">{tag}</span>
+                       ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {reviews.length === 0 ? (

@@ -11,7 +11,8 @@ import {
   Sparkles,
   MapPin,
   IndianRupee,
-  Activity
+  Activity,
+  Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { addTurf } from "../../services/firebase/turfService";

@@ -4,7 +4,7 @@ import { useScrollReveal } from "../../hooks/useScrollReveal";
 import { 
   Calendar, MapPin, Clock, Heart, Loader2, XCircle, Star, MessageSquare,
   IndianRupee, Activity, TrendingUp, Flame, QrCode, RotateCcw, Share2, PlusCircle, ArrowRight, Users, 
-  Settings, User, Phone, Save
+  Settings, User, Phone, Save, KeyRound
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -28,7 +28,7 @@ function StatBox({ label, value, icon: Icon, color }) {
 }
 
 export default function UserDashboard() {
-  const { user } = useAuth();
+  const { user, resetPassword } = useAuth();
   const ref = useScrollReveal();
   const [activeTab, setActiveTab] = useState("upcoming");
   const [bookings, setBookings] = useState([]);
@@ -398,7 +398,7 @@ export default function UserDashboard() {
                     </div>
                   </div>
 
-                  <ProfileSettingsForm user={user} />
+                  <ProfileSettingsForm user={user} resetPassword={resetPassword} />
                 </section>
               )}
             </main>
@@ -409,7 +409,7 @@ export default function UserDashboard() {
   );
 }
 
-function ProfileSettingsForm({ user }) {
+function ProfileSettingsForm({ user, resetPassword }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.displayName || user?.name || "",
@@ -430,63 +430,89 @@ function ProfileSettingsForm({ user }) {
     }
   };
 
+  const handleResetPassword = async () => {
+    try {
+      setLoading(true);
+      await resetPassword(user.email);
+      toast.success("Password reset email sent!");
+    } catch (error) {
+      toast.error("Failed to send reset email");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-      <div className="grid grid-cols-1 gap-6">
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Full Name</label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              type="text" 
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full pl-10 pr-4 py-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-              placeholder="Your Name"
-              required
-            />
+    <div className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Full Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input 
+                type="text" 
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full pl-10 pr-4 py-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                placeholder="Your Name"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Phone Number</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input 
+                type="tel" 
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full pl-10 pr-4 py-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                placeholder="+91 00000 00000"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Favorite Sport</label>
+            <select 
+              value={formData.favSport}
+              onChange={(e) => setFormData({ ...formData, favSport: e.target.value })}
+              className="w-full px-4 py-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none"
+            >
+              <option value="">Select a sport</option>
+              <option value="Football">Football</option>
+              <option value="Cricket">Cricket</option>
+              <option value="Tennis">Tennis</option>
+              <option value="Badminton">Badminton</option>
+            </select>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Phone Number</label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
-              type="tel" 
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="w-full pl-10 pr-4 py-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-              placeholder="+91 00000 00000"
-            />
-          </div>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          Save Changes
+        </button>
+      </form>
 
-        <div className="space-y-2">
-          <label className="text-sm font-bold text-muted-foreground uppercase tracking-widest pl-1">Favorite Sport</label>
-          <select 
-            value={formData.favSport}
-            onChange={(e) => setFormData({ ...formData, favSport: e.target.value })}
-            className="w-full px-4 py-3 bg-secondary/50 border border-border rounded-xl focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none"
-          >
-            <option value="">Select a sport</option>
-            <option value="Football">Football</option>
-            <option value="Cricket">Cricket</option>
-            <option value="Tennis">Tennis</option>
-            <option value="Badminton">Badminton</option>
-          </select>
-        </div>
+      <div className="pt-8 border-t border-border max-w-lg">
+        <h3 className="text-sm font-bold text-foreground mb-2">Account Security</h3>
+        <p className="text-xs text-muted-foreground mb-4">Protect your account by regularly updating your password.</p>
+        <button
+          type="button"
+          onClick={handleResetPassword}
+          className="px-6 py-2.5 bg-secondary text-foreground border border-border rounded-xl text-xs font-bold hover:bg-secondary/80 transition-all flex items-center gap-2"
+        >
+          <KeyRound className="w-4 h-4" /> Reset Password Via Email
+        </button>
       </div>
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-        Save Changes
-      </button>
-    </form>
+    </div>
   );
 }
 

@@ -3,18 +3,31 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged
 } from "firebase/auth";
 import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { getUserProfile, createUserProfile } from "../services/firebase/userService";
+import axios from "axios";
 
 const AuthContext = createContext(null);
+
+// API Base URL (Standard for the project)
+const API_URL = "http://127.0.0.1:5000/api/auth";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isVerified, setIsVerifiedState] = useState(() => {
+    // Check sessionStorage for persistent verification in the same session
+    return sessionStorage.getItem("otp_verified") === "true";
+  });
+
+  const setIsVerified = useCallback((value) => {
+    setIsVerifiedState(value);
+    sessionStorage.setItem("otp_verified", value ? "true" : "false");
+  }, []);
 
   useEffect(() => {
     // Safety timeout to prevent infinite blank screen
@@ -67,6 +80,7 @@ export function AuthProvider({ children }) {
               setLoading(false);
             });
           } else {
+            setUser(firebaseUser); // Even if no profile yet, set user
             setRole(null);
             setLoading(false);
           }
@@ -91,8 +105,21 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password, expectedRole) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      return user;
+      const firebaseUser = userCredential.user;
+      
+      // Check if user exists in the expected collection for this role
+      const collectionName = expectedRole === "owner" ? "owners" : "players";
+      const docRef = doc(db, collectionName, firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        // Sign out immediately if role mismatch
+        await signOut(auth);
+        const error = new Error(`This account is not registered as a ${expectedRole === 'owner' ? 'Turf Owner' : 'Player'}.`);
+        throw error;
+      }
+
+      return firebaseUser;
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -123,9 +150,26 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
+      setIsVerified(false);
     } catch (error) {
       console.error("Logout error:", error);
       throw error;
+    }
+  }, []);
+
+  /**
+   * Triggers a password reset email via the CUSTOM server-side API.
+   * This is more reliable than the client-side Firebase SDK call.
+   */
+  const resetPassword = useCallback(async (email) => {
+    try {
+      console.log(`Requesting server-side password reset for: ${email}`);
+      const response = await axios.post(`${API_URL}/password-reset`, { email });
+      console.log("Password reset response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Password reset error:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || "Failed to send reset email");
     }
   }, []);
 
@@ -136,7 +180,10 @@ export function AuthProvider({ children }) {
       login, 
       signup, 
       logout, 
+      resetPassword,
       isAuthenticated: !!user,
+      isVerified,
+      setIsVerified,
       loading 
     }}>
       {!loading && children}
