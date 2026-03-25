@@ -9,6 +9,7 @@ import { toast } from "sonner";
 export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [selectedRole, setSelectedRole] = useState("user");
   const [showPw, setShowPw] = useState(false);
@@ -16,28 +17,52 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [showOTP, setShowOTP] = useState(false); // New state for OTP step
   const [otp, setOtp] = useState("");
+  const [timer, setTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   
   const { signup, isAuthenticated, role, setIsVerified } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // We only redirect if authenticated (firebase) AND we can assume signup implies verification happened first 
-    // but to be safe with the new ProtectedRoute, we should check a verified state if we had one here too.
     if (isAuthenticated) {
       navigate(role === "owner" ? "/owner/dashboard" : "/");
     }
   }, [isAuthenticated, role, navigate]);
 
+  useEffect(() => {
+    let interval;
+    if (showOTP && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (timer === 0) {
+      setCanResend(true);
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [showOTP, timer]);
+
   const handleRequestOTP = async (e) => {
     e.preventDefault();
     setError("");
-    if (!name || !email || !password) { setError("Please fill all fields"); return; }
+    if (!name || !email || !password || !phone) { setError("Please fill all fields"); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters"); return; }
+    
+    // Password complexity check
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      setError("Password must contain at least one uppercase, one lowercase, one number, and one special character.");
+      return;
+    }
+
+    if (phone.length < 10) { setError("Please enter a valid 10-digit phone number"); return; }
     
     setLoading(true);
     try {
       await sendOTP(email, "signup");
       setShowOTP(true);
+      setTimer(60);
+      setCanResend(false);
       toast.success("Verification code sent to your email!");
     } catch (err) {
       setError(err.message || "Failed to send verification code");
@@ -60,7 +85,7 @@ export default function Signup() {
       setIsVerified(true);
       
       // 3. If valid, proceed with Firebase signup
-      await signup(name, email, password, selectedRole);
+      await signup(name.trim(), email.trim(), password, selectedRole, phone.trim());
       toast.success("Account created successfully!");
     } catch (err) {
       setError(err.message || "Failed to verify OTP or create account");
@@ -74,6 +99,8 @@ export default function Signup() {
     try {
       setLoading(true);
       await sendOTP(email.trim(), "signup");
+      setTimer(60);
+      setCanResend(false);
       toast.success("New verification code sent!");
       setError("");
     } catch (err) {
@@ -138,13 +165,24 @@ export default function Signup() {
               </div>
 
               <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Contact Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="9876543210"
+                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+
+              <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
                 <div className="relative">
                   <input
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min 6 characters"
+                    placeholder="UCase, LCase, 123, @#$"
                     className="w-full px-4 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all pr-10"
                   />
                   <button
@@ -155,6 +193,9 @@ export default function Signup() {
                     {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5 px-1 leading-relaxed">
+                  Must include: <span className="text-foreground/70">Uppercase, Lowercase, Number, and Special Symbol.</span> (Min 6 chars)
+                </p>
               </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
@@ -204,11 +245,11 @@ export default function Signup() {
               
               <button 
                 type="button"
-                disabled={loading}
+                disabled={loading || !canResend}
                 onClick={handleResendOTP}
-                className="w-full text-center text-xs text-primary hover:underline mt-2 disabled:opacity-50"
+                className="w-full text-center text-xs text-primary hover:underline mt-2 disabled:opacity-50 disabled:no-underline"
               >
-                Didn't receive the code? Resend OTP
+                {canResend ? "Didn't receive the code? Resend OTP" : `Resend code in ${timer}s`}
               </button>
             </form>
           )}

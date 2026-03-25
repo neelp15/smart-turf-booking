@@ -15,6 +15,8 @@ export default function Login() {
   const [error, setError] = useState("");
   const [showOTP, setShowOTP] = useState(false);
   const [otp, setOtp] = useState("");
+  const [timer, setTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
 
   const { login, isAuthenticated, role, logout, isVerified, setIsVerified, user, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -33,6 +35,19 @@ export default function Login() {
       navigate(role === "owner" ? "/owner/dashboard" : "/");
     }
   }, [isAuthenticated, isVerified, role, navigate, showOTP, email, user]);
+
+  useEffect(() => {
+    let interval;
+    if (showOTP && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    } else if (timer === 0) {
+      setCanResend(true);
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [showOTP, timer]);
 
   const getErrorMessage = (err) => {
     if (err.message && !err.code) return err.message;  
@@ -60,6 +75,8 @@ export default function Login() {
       // 2. If successful, request OTP from our server
       await sendOTP(email, "login");
       setShowOTP(true);
+      setTimer(60);
+      setCanResend(false);
       toast.success("Security code sent to your email!");
     } catch (err) {
       setError(getErrorMessage(err));
@@ -106,6 +123,8 @@ export default function Login() {
     try {
       setLoading(true);
       await sendOTP(emailToResend, "login");
+      setTimer(60);
+      setCanResend(false);
       toast.success("New security code sent!");
       setError("");
     } catch (err) {
@@ -142,6 +161,8 @@ export default function Login() {
   const handleBack = async () => {
     setShowOTP(false);
     setOtp("");
+    setTimer(60);
+    setCanResend(false);
     setIsVerified(false); // Changed from setIsOTPVerified to setIsVerified
     await logout(); // Sign out from Firebase if they back out of OTP
   };
@@ -264,11 +285,11 @@ export default function Login() {
 
               <button 
                 type="button"
-                disabled={loading}
+                disabled={loading || !canResend}
                 onClick={handleResendOTP}
-                className="w-full text-center text-xs text-primary hover:underline mt-2 disabled:opacity-50"
+                className="w-full text-center text-xs text-primary hover:underline mt-2 disabled:opacity-50 disabled:no-underline"
               >
-                Didn't receive the code? Resend
+                {canResend ? "Didn't receive the code? Resend" : `Resend code in ${timer}s`}
               </button>
             </form>
           )}

@@ -15,6 +15,9 @@ import {
   runTransaction
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import axios from "axios";
+
+const API_BASE_URL = "http://127.0.0.1:5000/api";
 
 /**
  * Adds a new turf listing to Firestore.
@@ -193,6 +196,23 @@ export const checkAndCreateBooking = async (bookingData) => {
       transaction.set(bookingRef, finalBookingData);
       return { id: bookingRef.id, ...finalBookingData };
     });
+
+    // 3. Trigger Email Notifications (Non-blocking)
+    try {
+      console.log("Triggering booking notifications...");
+      axios.post(`${API_BASE_URL}/bookings/notify`, {
+        bookingId: result.id,
+        turfId: result.turfId,
+        userUid: result.userUid,
+        ownerUid: result.ownerUid,
+        date: result.date,
+        slots: result.slots,
+        totalPrice: result.price,
+        turfName: result.turfName
+      }).catch(err => console.error("Notification API error:", err));
+    } catch (e) {
+      console.error("Failed to initiate notification request:", e);
+    }
 
     return result;
   } catch (error) {

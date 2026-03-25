@@ -126,7 +126,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const signup = useCallback(async (name, email, password, selectedRole) => {
+  const signup = useCallback(async (name, email, password, selectedRole, phone) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -136,6 +136,7 @@ export function AuthProvider({ children }) {
       await createUserProfile(firebaseUser.uid, {
         name,
         email,
+        phone,
         role: selectedRole,
         createdAt: new Date().toISOString()
       }, collectionName);

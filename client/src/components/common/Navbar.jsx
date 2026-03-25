@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Menu, X, MapPin, User, LogOut, LayoutDashboard } from "lucide-react";
 
 export default function Navbar() {
-  const { user, role, logout, isAuthenticated } = useAuth();
+  const { user, role, logout, isAuthenticated, isVerified } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,17 +36,17 @@ export default function Navbar() {
             {role === "user" && (
               <NavItem to="/turfs" label="Explore Turfs" current={location.pathname} />
             )}
-            {isAuthenticated && (
+            {isAuthenticated && isVerified && (
               <NavItem to={dashboardPath} label="Dashboard" current={location.pathname} />
             )}
-            {role === "owner" && (
+            {role === "owner" && isVerified && (
               <NavItem to="/owner/my-turfs" label="My Turfs" current={location.pathname} />
             )}
           </div>
 
           {/* Right */}
           <div className="hidden md:flex items-center gap-3">
-            {isAuthenticated ? (
+            {isAuthenticated && isVerified ? (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary">
                   <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
@@ -100,14 +100,14 @@ export default function Navbar() {
             {role === "user" && (
               <MobileNavItem to="/turfs" label="Explore Turfs" onClick={() => setMobileOpen(false)} />
             )}
-            {isAuthenticated && (
+            {isAuthenticated && isVerified && (
               <MobileNavItem to={dashboardPath} label="Dashboard" onClick={() => setMobileOpen(false)} />
             )}
-            {role === "owner" && (
+            {role === "owner" && isVerified && (
               <MobileNavItem to="/owner/my-turfs" label="My Turfs" onClick={() => setMobileOpen(false)} />
             )}
             <div className="pt-2 border-t border-border mt-2">
-              {isAuthenticated ? (
+              {isAuthenticated && isVerified ? (
                 <button
                   onClick={() => { handleLogout(); setMobileOpen(false); }}
                   className="w-full text-left px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
