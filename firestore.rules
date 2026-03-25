@@ -2,42 +2,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Turf rules: Anyone can read, only owners can write their own turfs
+    // HELPER FUNCTIONS
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return exists(/databases/$(database)/documents/owners/$(uid));
+    }
+    
+    function isPlayer(uid) {
+      return exists(/databases/$(database)/documents/players/$(uid));
+    }
+
+    // TURFS: Anyone can read, only verified owners can create/edit their own turfs
     match /turfs/{turfId} {
       allow read: if true;
-      allow write: if request.auth != null && (resource == null || resource.data.ownerUid == request.auth.uid);
+      allow create: if isAuthenticated() && isOwner(request.auth.uid);
+      allow update, delete: if isAuthenticated() && (resource == null || resource.data.ownerUid == request.auth.uid);
     }
     
-    // Booking rules: Anyone can read (to check availability), users can create their own bookings
+    // BOOKINGS: 
+    // - Anyone can read (to check availability), or authenticated users involved can read
+    // - Only players can create bookings for themselves
     match /bookings/{bookingId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && resource.data.userUid == request.auth.uid;
+      allow read: if true; // Public needed for calendar availability checks
+      allow create: if isAuthenticated() && isPlayer(request.auth.uid) && request.resource.data.userUid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (
+        resource.data.userUid == request.auth.uid || 
+        get(/databases/$(database)/documents/turfs/$(resource.data.turfId)).data.ownerUid == request.auth.uid
+      );
     }
     
-    // Reserved slots rules: CRITICAL for double-booking prevention
+    // RESERVED SLOTS: Crucial for double-booking prevention.
     match /reserved_slots/{slotId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAuthenticated();
     }
     
-    // Player profiles: Allow authenticated users to read/write their own profile
+    // PLAYER PROFILES: Users manage their own. Others can read basic info for match-making.
     match /players/{userId} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Owner profiles: Allow authenticated users to read/write their own profile
+    // OWNER PROFILES: Users manage their own.
     match /owners/{userId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Reviews: Anyone can read, authenticated users can create (not duplicate-check enforced here)
+    // REVIEWS: Anyone can read, only players can create one for a turf they likely used
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && resource.data.userUid == request.auth.uid;
+      allow create: if isAuthenticated() && isPlayer(request.auth.uid) && request.resource.data.userUid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userUid == request.auth.uid;
+    }
+
+    // OTP VERIFICATION: Only the server (admin) should manage these.
+    // Explicitly deny all client access for security.
+    match /verification_otps/{email} {
+      allow read, write: if false;
     }
   }
 }
