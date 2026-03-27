@@ -8,7 +8,8 @@ import {
   MessageSquare, Activity, BarChart2, Shield
 } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, PieChart, Pie, Cell
 } from "recharts";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -54,7 +55,12 @@ export default function OwnerTurfDetail() {
     const unsub = subscribeToOwnerBookings(user.uid, (all) => {
       const turfBookings = all
         .filter(b => b.turfId === id)
-        .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+        .sort((a, b) => {
+           // Sort by date/time ascending initially
+           const dateA = new Date(`${a.date} ${a.slots?.[0] || a.slot || "12:00 PM"}`);
+           const dateB = new Date(`${b.date} ${b.slots?.[0] || b.slot || "12:00 PM"}`);
+           return dateA - dateB;
+        });
       setBookings(turfBookings);
     });
     return () => unsub();
@@ -99,6 +105,28 @@ export default function OwnerTurfDetail() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
   }, [bookings]);
+
+  // Determine if a booking is in the past
+  const isPast = (b) => {
+    try {
+      const lastSlot = b.slots ? b.slots[b.slots.length - 1] : b.slot;
+      if (!lastSlot) return false;
+      const [hour, minAndAmPm] = lastSlot.split(":");
+      const [minute, ampm] = minAndAmPm.split(" ");
+      let h = parseInt(hour, 10);
+      if (ampm === "PM" && h !== 12) h += 12;
+      if (ampm === "AM" && h === 12) h = 0;
+      
+      const bDate = new Date(b.date);
+      bDate.setHours(h, parseInt(minute, 10), 0);
+      return bDate < new Date();
+    } catch {
+      return false;
+    }
+  };
+
+  const upcomingBookings = useMemo(() => bookings.filter(b => !isPast(b)), [bookings]);
+  const completedBookings = useMemo(() => bookings.filter(b => isPast(b)).reverse(), [bookings]);
 
   const handleDelete = async () => {
     if (!confirm("Permanently delete this turf? This action cannot be undone.")) return;
@@ -242,50 +270,34 @@ export default function OwnerTurfDetail() {
         {/* --- Bookings Tab --- */}
         {activeTab === "bookings" && (
           <div className="space-y-4">
-            {bookings.length === 0 ? (
-              <EmptyState icon={Calendar} message="No bookings for this turf yet" />
-            ) : (
-              bookings.map((b, i) => (
-                <div
-                  key={b.id}
-                  className={`scroll-reveal stagger-${(i % 5) + 1} glass-card p-5 rounded-3xl border border-white/10 hover:border-primary/20 transition-all group`}
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm">
-                        {b.userName?.charAt(0).toUpperCase() || "?"}
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground">{b.userName}</p>
-                        <p className="text-[10px] font-mono text-muted-foreground uppercase">ID: {b.customId || b.id.slice(0, 8)}</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg">
-                        <Calendar className="w-3.5 h-3.5" /> {b.date}
-                      </span>
-                      <span className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-lg">
-                        <Clock className="w-3.5 h-3.5" /> {(b.slots || [b.slot]).join(", ")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-black text-foreground text-lg">₹{b.price}</span>
-                      <button
-                        onClick={() => handleTogglePayment(b.id, b.paymentStatus)}
-                        title="Click to toggle"
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all hover:scale-105 active:scale-95 ${
-                          b.paymentStatus === "paid"
-                            ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
-                        }`}
-                      >
-                        {b.paymentStatus === "paid" ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                        {b.paymentStatus || "Pending"}
-                      </button>
-                    </div>
-                  </div>
+            {upcomingBookings.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" /> Upcoming Bookings
+                </h3>
+                <div className="space-y-4">
+                  {upcomingBookings.map((b, i) => (
+                    <BookingCard key={b.id} b={b} i={i} handleTogglePayment={handleTogglePayment} />
+                  ))}
                 </div>
-              ))
+              </div>
+            )}
+            
+            {completedBookings.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-xl font-display font-bold text-foreground mb-4 flex items-center gap-2 opacity-70">
+                  <CheckCircle2 className="w-5 h-5" /> Completed Bookings
+                </h3>
+                <div className="space-y-4 opacity-80 mix-blend-multiply dark:mix-blend-screen">
+                  {completedBookings.map((b, i) => (
+                    <BookingCard key={b.id} b={b} i={i} handleTogglePayment={handleTogglePayment} isCompleted />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {bookings.length === 0 && (
+              <EmptyState icon={Calendar} message="No bookings for this turf yet" />
             )}
           </div>
         )}
@@ -294,7 +306,7 @@ export default function OwnerTurfDetail() {
         {activeTab === "analytics" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Revenue Chart */}
-            <div className="scroll-reveal glass-card p-6 md:p-8 rounded-3xl border border-white/10 h-[380px]">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10 h-[380px]">
               <div className="mb-6">
                 <h3 className="font-display font-bold text-xl text-foreground">Revenue — Last 7 Days</h3>
                 <p className="text-xs text-muted-foreground mt-1">Daily earnings for this turf</p>
@@ -324,7 +336,7 @@ export default function OwnerTurfDetail() {
             </div>
 
             {/* Peak Slots Heatmap */}
-            <div className="scroll-reveal glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <div className="mb-6">
                 <h3 className="font-display font-bold text-xl text-foreground">Peak Booking Slots</h3>
                 <p className="text-xs text-muted-foreground mt-1">Most booked time slots for this turf</p>
@@ -365,7 +377,7 @@ export default function OwnerTurfDetail() {
             </div>
 
             {/* Turf Info Card */}
-            <div className="scroll-reveal lg:col-span-2 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="lg:col-span-2 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <h3 className="font-display font-bold text-xl text-foreground mb-6 flex items-center gap-2">
                 <Activity className="w-5 h-5 text-primary" /> Turf Details
               </h3>
@@ -406,7 +418,7 @@ export default function OwnerTurfDetail() {
         {activeTab === "reviews" && (
           <div className="space-y-4">
             {/* Summary */}
-            <div className="scroll-reveal glass-card p-6 rounded-3xl border border-white/10 flex items-center gap-6">
+            <div className="glass-card p-6 rounded-3xl border border-white/10 flex items-center gap-6">
               <div className="text-center">
                 <p className="text-5xl font-display font-black text-accent">{avgRating}</p>
                 <div className="flex gap-0.5 justify-center mt-2">
@@ -462,7 +474,7 @@ export default function OwnerTurfDetail() {
               <EmptyState icon={MessageSquare} message="No reviews yet for this turf" />
             ) : (
               reviews.map((r, i) => (
-                <div key={r.id} className={`scroll-reveal stagger-${(i % 5) + 1} glass-card p-5 rounded-3xl border border-white/10`}>
+                <div key={r.id} className="glass-card p-5 rounded-3xl border border-white/10">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm">
@@ -496,9 +508,52 @@ export default function OwnerTurfDetail() {
 
 function EmptyState({ icon: Icon, message }) {
   return (
-    <div className="scroll-reveal py-20 flex flex-col items-center justify-center glass-card rounded-3xl border border-dashed border-white/10 opacity-60">
+    <div className="py-20 flex flex-col items-center justify-center glass-card rounded-3xl border border-dashed border-white/10 opacity-60">
       <Icon className="w-12 h-12 text-muted-foreground mb-4 opacity-30" />
       <p className="text-foreground/50 font-medium">{message}</p>
+    </div>
+  );
+}
+
+function BookingCard({ b, i, handleTogglePayment, isCompleted }) {
+  return (
+    <div
+      className={`glass-card p-5 rounded-3xl border border-white/10 ${!isCompleted ? "hover:border-primary/20 hover:shadow-lg" : ""} transition-all group`}
+    >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm">
+            {(b.userName || "?").charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="font-bold text-foreground">{b.userName || "Unknown User"}</p>
+            <p className="text-[10px] font-mono text-muted-foreground uppercase">ID: {b.customId || b.id.slice(0, 8)}</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5 bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 text-foreground">
+            <Calendar className="w-3.5 h-3.5 text-primary" /> {b.date}
+          </span>
+          <span className="flex items-center gap-1.5 bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-black/10 dark:border-white/10 text-foreground">
+            <Clock className="w-3.5 h-3.5 text-accent" /> {(b.slots || [b.slot]).join(", ")}
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="font-black text-foreground text-lg">₹{b.price}</span>
+          <button
+            onClick={() => handleTogglePayment(b.id, b.paymentStatus)}
+            title="Click to toggle payment status"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all hover:scale-105 active:scale-95 ${
+              b.paymentStatus === "paid"
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20"
+            }`}
+          >
+            {b.paymentStatus === "paid" ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+            {b.paymentStatus || "Pending"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

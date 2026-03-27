@@ -1,0 +1,100 @@
+[
+  {
+    "id": "7EQyNNCWQzpwGdWRiqrP",
+    "description": "Best Turf in Ahemdabad !!!",
+    "price": 1500,
+    "reviews": 2,
+    "createdAt": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1774428820,
+      "nanoseconds": 701000000
+    },
+    "rating": 5,
+    "name": "Skyline Arena",
+    "ownerUid": "X3cFG92IsPfa9t2M3FM42TSB4ht1",
+    "availableSlots": [
+      "12:00 AM",
+      "01:00 AM",
+      "02:00 AM",
+      "03:00 AM",
+      "04:00 AM",
+      "05:00 AM",
+      "06:00 AM",
+      "07:00 AM",
+      "08:00 AM",
+      "09:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "01:00 PM",
+      "02:00 PM",
+      "03:00 PM",
+      "04:00 PM",
+      "05:00 PM",
+      "06:00 PM",
+      "07:00 PM",
+      "08:00 PM",
+      "09:00 PM",
+      "10:00 PM",
+      "11:00 PM"
+    ],
+    "sport": "Football",
+    "images": [
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428817/turf-connect/turfs/xfl3y7o4w38ztsdxxe8a.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428817/turf-connect/turfs/ewrz7gg2kslnufly1njg.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428817/turf-connect/turfs/h1swyln24zacsjk8roho.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428817/turf-connect/turfs/ydwdiazseccodl6ijmgy.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428817/turf-connect/turfs/s6uviuvdmoeyqk9lzitg.png"
+    ],
+    "location": "Ahemdabad"
+  },
+  {
+    "id": "MOMGfY3typyAh05m2j70",
+    "sport": "Box Cricket",
+    "availableSlots": [
+      "12:00 AM",
+      "01:00 AM",
+      "02:00 AM",
+      "03:00 AM",
+      "04:00 AM",
+      "05:00 AM",
+      "06:00 AM",
+      "07:00 AM",
+      "08:00 AM",
+      "09:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "01:00 PM",
+      "02:00 PM",
+      "03:00 PM",
+      "04:00 PM",
+      "05:00 PM",
+      "06:00 PM",
+      "07:00 PM",
+      "08:00 PM",
+      "09:00 PM",
+      "10:00 PM",
+      "11:00 PM"
+    ],
+    "location": "Surat",
+    "images": [
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428751/turf-connect/turfs/nqlwphixg7rxyjqpvwu6.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428751/turf-connect/turfs/kytxdrmavxgiohmuel0r.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428751/turf-connect/turfs/izxs0jq79vslrs0ckmdo.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428751/turf-connect/turfs/kk8ef9xhpwuets2jflk0.png",
+      "https://res.cloudinary.com/dlwjke5n8/image/upload/v1774428751/turf-connect/turfs/rq2uhe0eiyp7scazwlr3.png"
+    ],
+    "createdAt": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1774428755,
+      "nanoseconds": 72000000
+    },
+    "description": "Best Turf in Surat !!!",
+    "price": 1200,
+    "reviews": 1,
+    "ownerUid": "X3cFG92IsPfa9t2M3FM42TSB4ht1",
+    "name": "Green Arena",
+    "rating": 5
+  }
+]

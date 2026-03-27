@@ -9,7 +9,6 @@ import { toast } from "sonner";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedRole, setSelectedRole] = useState("user");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -68,9 +67,9 @@ export default function Login() {
     
     setLoading(true);
     try {
-      console.log(`Attempting login for ${email.trim()} with role ${selectedRole}`);
+      console.log(`Attempting login for ${email.trim()}`);
       // 1. First authenticate with Firebase (trimming inputs to avoid spacing issues)
-      await login(email.trim(), password.trim(), selectedRole);
+      await login(email.trim(), password.trim());
       
       // 2. If successful, request OTP from our server
       await sendOTP(email, "login");
@@ -79,7 +78,9 @@ export default function Login() {
       setCanResend(false);
       toast.success("Security code sent to your email!");
     } catch (err) {
-      setError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setError(msg);
+      toast.error(msg);
       // If login failed, no need to logout. 
       // If sendOTP failed, we might be logged into firebase but didn't get OTP.
     } finally {
@@ -183,21 +184,6 @@ export default function Login() {
 
           {!showOTP ? (
             <form onSubmit={handleInitialLogin} className="space-y-4">
-              <div className="flex bg-secondary rounded-xl p-1">
-                {["user", "owner"].map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setSelectedRole(r)}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                      selectedRole === r ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    }`}
-                  >
-                    {r === "user" ? "Player" : "Turf Owner"}
-                  </button>
-                ))}
-              </div>
-
               <div>
                 <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
                 <input

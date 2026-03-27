@@ -30,7 +30,7 @@ import {
   ResponsiveContainer 
 } from "recharts";
 import { useAuth } from "../../context/AuthContext";
-import { getOwnerTurfs, subscribeToOwnerBookings } from "../../services/firebase/turfService";
+import { getOwnerTurfs, subscribeToOwnerBookings, getTurfReviews } from "../../services/firebase/turfService";
 import ProfileSettingsModal from "../../components/owner/ProfileSettingsModal";
 
 
@@ -42,22 +42,39 @@ export default function OwnerDashboard() {
   
   const [turfs, setTurfs] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     if (!user) return;
 
-    // Fetch static data (turfs)
-    const fetchTurfs = async () => {
+    // Fetch static data (turfs and their reviews)
+    const fetchTurfsAndReviews = async () => {
       try {
         const ownerTurfs = await getOwnerTurfs(user.uid);
         setTurfs(ownerTurfs);
+
+        if (ownerTurfs.length > 0) {
+          // Fetch reviews for all of the owner's turfs
+          const reviewsPromiseArray = ownerTurfs.map(t => getTurfReviews(t.id));
+          const allReviewsNested = await Promise.all(reviewsPromiseArray);
+          const allReveiwsFlat = allReviewsNested.flat();
+          
+          // Sort reviews by date descending
+          const sortedReviews = allReveiwsFlat.sort((a, b) => {
+            const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+            const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+            return timeB - timeA;
+          });
+          
+          setReviews(sortedReviews);
+        }
       } catch (error) {
-        console.error("Error fetching turfs:", error);
+        console.error("Error fetching turfs or reviews:", error);
       }
     };
-    fetchTurfs();
+    fetchTurfsAndReviews();
 
     // Subscribe to real-time bookings
     const unsubscribe = subscribeToOwnerBookings(user.uid, (ownerBookings) => {
@@ -122,6 +139,12 @@ export default function OwnerDashboard() {
       });
   }, [bookings, today]);
 
+  const avgRatingGlobal = useMemo(() => {
+    if (reviews.length === 0) return "0.0";
+    const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+    return (sum / reviews.length).toFixed(1);
+  }, [reviews]);
+
   const stats = [
     { 
       label: "Total Revenue", 
@@ -157,7 +180,7 @@ export default function OwnerDashboard() {
     },
     { 
       label: "Avg Rating", 
-      value: "4.8", 
+      value: avgRatingGlobal, 
       icon: Star, 
       trend: "Top 5%", 
       color: "from-accent/20 to-accent/0",
@@ -235,7 +258,7 @@ export default function OwnerDashboard() {
           {/* Charts & Notice Board */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-10">
             {/* Revenue Chart — live data */}
-            <div className="lg:col-span-3 scroll-reveal stagger-1 glass-card p-6 md:p-8 rounded-3xl border border-white/10 h-[450px]">
+            <div className="lg:col-span-3 glass-card p-6 md:p-8 rounded-3xl border border-white/10 h-[450px]">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="font-display font-bold text-xl text-foreground">Revenue Insights</h3>
@@ -271,7 +294,7 @@ export default function OwnerDashboard() {
             </div>
 
             {/* Notice Board */}
-            <div className="lg:col-span-2 scroll-reveal stagger-2 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="lg:col-span-2 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="font-display font-bold text-xl text-foreground">Notice Board</h3>
@@ -322,7 +345,7 @@ export default function OwnerDashboard() {
           {/* Reviews & Business Health */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
             {/* Reviews Management */}
-            <div className="scroll-reveal stagger-1 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="font-display font-bold text-xl text-foreground">Recent Reviews</h3>
@@ -330,38 +353,51 @@ export default function OwnerDashboard() {
                 </div>
                 <div className="flex items-center gap-1 text-accent">
                   <Star className="w-4 h-4 fill-accent" />
-                  <span className="text-sm font-bold">4.8</span>
+                  <span className="text-sm font-bold">{avgRatingGlobal}</span>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {[
-                  { name: "Rahul S.", rating: 5, comment: "Amazing turf quality! The lighting is perfect for night matches.", date: "2 days ago" },
-                  { name: "Amit K.", rating: 4, comment: "Good experience, but the drinking water station was empty.", date: "1 week ago" }
-                ].map((review, i) => (
-                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-[10px] font-bold">
-                          {review.name.charAt(0)}
+              <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                {reviews.length > 0 ? (
+                  reviews.map((review) => (
+                    <div key={review.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-[10px] font-bold">
+                            {(review.userName || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-foreground block">{review.userName || "Anonymous"}</span>
+                            <span className="text-[10px] text-muted-foreground block truncate max-w-[120px]">
+                              {review.turfName || Object.values(turfs).find(t => t.id === review.turfId)?.name || "Turf"}
+                            </span>
+                          </div>
                         </div>
-                        <span className="text-sm font-bold text-foreground">{review.name}</span>
+                        <div className="flex gap-0.5 mt-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className={`w-3 h-3 ${i < review.rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-3 h-3 ${i < review.rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
-                        ))}
-                      </div>
+                      <p className="text-xs text-muted-foreground italic mt-3">"{review.comment}"</p>
+                      <p className="text-[10px] text-muted-foreground/50 mt-2 font-mono">
+                        {review.createdAt?.seconds 
+                           ? new Date(review.createdAt.seconds * 1000).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' }) 
+                           : "Recently"}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground italic">"{review.comment}"</p>
-                    <p className="text-[10px] text-muted-foreground/50 mt-2">{review.date}</p>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 text-center opacity-50">
+                    <MessageSquare className="w-10 h-10 text-muted-foreground mb-3" />
+                    <p className="text-sm text-muted-foreground italic">No reviews received yet</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             {/* Quick Management Actions */}
-            <div className="scroll-reveal stagger-2 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <div className="mb-8">
                 <h3 className="font-display font-bold text-xl text-foreground">Quick Actions</h3>
                 <p className="text-xs text-muted-foreground mt-1">Manage your business operations instantly</p>
@@ -402,7 +438,7 @@ export default function OwnerDashboard() {
           {/* Today's Schedule + Peak Hours */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
             {/* Today's Schedule */}
-            <div className="scroll-reveal stagger-1 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="font-display font-bold text-xl text-foreground">Today's Schedule</h3>
@@ -444,7 +480,7 @@ export default function OwnerDashboard() {
             </div>
 
             {/* Peak Hours Heatmap */}
-            <div className="scroll-reveal stagger-2 glass-card p-6 md:p-8 rounded-3xl border border-white/10">
+            <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10">
               <div className="mb-6">
                 <h3 className="font-display font-bold text-xl text-foreground">Peak Hours</h3>
                 <p className="text-xs text-muted-foreground mt-1">Most popular booking slots across all turfs</p>
@@ -479,7 +515,7 @@ export default function OwnerDashboard() {
           </div>
 
           {/* Action Suggestion */}
-          <div className="scroll-reveal stagger-3 p-6 rounded-3xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30">
                 <TrendingUp className="w-6 h-6" />

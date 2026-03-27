@@ -102,26 +102,27 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = useCallback(async (email, password, expectedRole) => {
+  const login = useCallback(async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
       
-      // Check if user exists in the expected collection for this role
-      const collectionName = expectedRole === "owner" ? "owners" : "players";
-      const docRef = doc(db, collectionName, firebaseUser.uid);
-      const docSnap = await getDoc(docRef);
-
+      // Auto-detect role by checking if they are a Player
+      let docSnap = await getDoc(doc(db, "players", firebaseUser.uid));
+      
       if (!docSnap.exists()) {
-        // Sign out immediately if role mismatch
-        await signOut(auth);
-        const error = new Error(`This account is not registered as a ${expectedRole === 'owner' ? 'Turf Owner' : 'Player'}.`);
-        throw error;
+        // If not a player, check if they are an Owner
+        docSnap = await getDoc(doc(db, "owners", firebaseUser.uid));
+        
+        if (!docSnap.exists()) {
+          // Found in neither collection! Reject login.
+          await signOut(auth);
+          throw new Error("This account profile is not registered. Please sign up first.");
+        }
       }
 
       return firebaseUser;
     } catch (error) {
-      console.error("Login error:", error);
       throw error;
     }
   }, []);

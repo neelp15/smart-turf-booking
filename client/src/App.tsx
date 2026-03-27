@@ -19,6 +19,7 @@ import EditTurf from "./pages/owner/EditTurf";
 import OwnerBookings from "./pages/owner/OwnerBookings";
 import OwnerTurfDetail from "./pages/owner/OwnerTurfDetail";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/turfs" element={<TurfListing />} />
             <Route path="/turf/:id" element={<TurfDetail />} />
             <Route path="/booking/:id" element={

@@ -6,7 +6,6 @@ const mailSender = require('../utils/mailSender');
  * Controller to generate and send an OTP to an email address.
  */
 const sendOTP = async (req, res) => {
-  console.log("sendOTP request body:", req.body);
   try {
     let { email, type } = req.body; // type is 'signup' or 'login'
 
@@ -26,13 +25,30 @@ const sendOTP = async (req, res) => {
     // Prepare Email Content
     const title = type === 'signup' ? "Email Verification - Turf Connect" : "Login OTP - Turf Connect";
     const body = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #15803d;">Turf Connect Verification</h2>
-        <p>Dear User,</p>
-        <p>Your OTP for ${type === 'signup' ? 'completing your registration' : 'logging in'} is:</p>
-        <h1 style="color: #15803d; font-size: 32px; letter-spacing: 5px; text-align: center; background: #f0fdf4; padding: 10px; border-radius: 5px;">${otp}</h1>
-        <p>This OTP is valid for 5 minutes. Please do not share this code with anyone.</p>
-        <p>Best regards,<br/>The Turf Connect Team</p>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: left;">
+          <h2 style="color: #15803d; font-size: 24px; font-weight: 800; margin-top: 0; margin-bottom: 24px; text-align: center; letter-spacing: -0.5px;">Turf Connect</h2>
+          <hr style="border: 0; border-top: 1px solid #e4e4e7; margin-bottom: 24px;" />
+          <h3 style="color: #18181b; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 16px;">Security Verification Code</h3>
+          <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+            Your verification code for ${type === 'signup' ? 'completing your registration' : 'securely logging in'} is:
+          </p>
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-size: 36px; font-weight: 800; letter-spacing: 8px; padding: 16px 32px; border-radius: 12px;">
+              ${otp}
+            </div>
+          </div>
+          <p style="color: #52525b; font-size: 14px; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+            This security code is valid for 1 minute. <strong>Please do not share this code with anyone.</strong>
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e4e4e7; margin-bottom: 24px;" />
+          <p style="color: #71717a; font-size: 12px; line-height: 1.5; margin-bottom: 0;">
+            If you did not request this code, your account is still secure. You can safely ignore this email.
+          </p>
+        </div>
+        <p style="color: #a1a1aa; font-size: 12px; margin-top: 24px;">
+          &copy; ${new Date().getFullYear()} Turf Connect. All rights reserved.
+        </p>
       </div>
     `;
 
@@ -50,7 +66,6 @@ const sendOTP = async (req, res) => {
  * Controller to verify the OTP.
  */
 const verifyOTP = async (req, res) => {
-  console.log("verifyOTP request body:", req.body);
   try {
     let { email, otp, type } = req.body;
 
@@ -88,22 +103,40 @@ const requestPasswordReset = async (req, res) => {
     email = email.trim().toLowerCase();
 
     // Generate accurate Firebase Password Reset Link
-    const resetLink = await admin.auth().generatePasswordResetLink(email);
+    const defaultResetLink = await admin.auth().generatePasswordResetLink(email);
+
+    // Extract oobCode and construct our beautiful React frontend link
+    const url = new URL(defaultResetLink);
+    const oobCode = url.searchParams.get("oobCode");
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:8080";
+    const customLink = `${clientUrl}/reset-password?oobCode=${oobCode}`;
 
     // Prepare Email Content
     const title = "Reset Your Password - Turf Connect";
     const body = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #15803d;">Password Reset Request</h2>
-        <p>Hi there,</p>
-        <p>We received a request to reset your password for your Turf Connect account. If you didn't make this request, you can safely ignore this email.</p>
-        <p>To reset your password, click the button below:</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background-color: #15803d; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f5; padding: 40px 20px; text-align: center;">
+        <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: left;">
+          <h2 style="color: #15803d; font-size: 24px; font-weight: 800; margin-top: 0; margin-bottom: 24px; text-align: center; letter-spacing: -0.5px;">Turf Connect</h2>
+          <hr style="border: 0; border-top: 1px solid #e4e4e7; margin-bottom: 24px;" />
+          <h3 style="color: #18181b; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 16px;">Reset your password</h3>
+          <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+            We received a request to reset the password for your Turf Connect account. Click the button below to securely choose a new password.
+          </p>
+          <div style="text-align: center; margin-bottom: 32px;">
+            <a href="${customLink}" style="display: inline-block; background-color: #15803d; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 2px 4px rgba(21, 128, 61, 0.2);">Reset Password</a>
+          </div>
+          <p style="color: #52525b; font-size: 14px; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+            If you didn't request a password reset, you can safely ignore this email. Your account remains secure.
+          </p>
+          <hr style="border: 0; border-top: 1px solid #e4e4e7; margin-bottom: 24px;" />
+          <p style="color: #71717a; font-size: 12px; line-height: 1.5; margin-bottom: 0;">
+            If the button above doesn't work, copy and paste this link into your browser:<br/>
+            <a href="${customLink}" style="color: #15803d; word-break: break-all;">${customLink}</a>
+          </p>
         </div>
-        <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666; font-size: 12px;">${resetLink}</p>
-        <p>Best regards,<br/>The Turf Connect Team</p>
+        <p style="color: #a1a1aa; font-size: 12px; margin-top: 24px;">
+          &copy; ${new Date().getFullYear()} Turf Connect. All rights reserved.
+        </p>
       </div>
     `;
 
