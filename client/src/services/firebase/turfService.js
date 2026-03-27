@@ -12,7 +12,8 @@ import {
   arrayUnion,
   arrayRemove,
   onSnapshot,
-  runTransaction
+  runTransaction,
+  setDoc
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import axios from "axios";

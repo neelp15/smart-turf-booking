@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useScrollReveal } from "../../hooks/useScrollReveal";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "sonner";
+import ReviewModal from "../../components/common/ReviewModal";
 
 export default function TurfDetail() {
   const { id } = useParams();
@@ -20,6 +21,7 @@ export default function TurfDetail() {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [bookedSlots, setBookedSlots] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const ref = useScrollReveal();
 
   useEffect(() => {
@@ -115,6 +117,27 @@ export default function TurfDetail() {
     : ["https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2000&auto=format&fit=crop"];
   
   const turfSlots = (turf && Array.isArray(turf.availableSlots)) ? turf.availableSlots : [];
+
+  // Returns true if this slot's start time has already passed (only relevant for today)
+  const isSlotPast = (slot) => {
+    if (!selectedDate) return false;
+    const today = new Date().toISOString().split("T")[0];
+    if (selectedDate !== today) return false;
+
+    // Parse slot string like "6:00 AM" or "10:30 PM"
+    const match = slot.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
+    if (!match) return false;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2] || "0", 10);
+    const period = match[3].toUpperCase();
+    if (period === "AM" && hours === 12) hours = 0;
+    if (period === "PM" && hours !== 12) hours += 12;
+
+    const now = new Date();
+    const slotDate = new Date();
+    slotDate.setHours(hours, minutes, 0, 0);
+    return slotDate <= now;
+  };
   const amenities = (turf && Array.isArray(turf.amenities)) ? turf.amenities : ["Parking", "Water", "Washroom", "Locker"];
 
   // Generate next 7 days
@@ -175,6 +198,25 @@ export default function TurfDetail() {
   return (
     <div ref={ref} className="min-h-screen bg-background text-foreground">
       <Navbar />
+
+      {isReviewModalOpen && turf && (
+        <ReviewModal
+          turfId={turf.id}
+          turfName={turf.name}
+          onClose={() => setIsReviewModalOpen(false)}
+          onSuccess={() => {
+            // Re-fetch reviews to show the new one immediately
+            getTurfReviews(id).then(data => {
+              const sorted = data.sort((a, b) => {
+                const tA = a.createdAt?.seconds ?? 0;
+                const tB = b.createdAt?.seconds ?? 0;
+                return tB - tA;
+              });
+              setReviews(sorted);
+            });
+          }}
+        />
+      )}
 
       {loading ? (
         <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center">
@@ -311,12 +353,25 @@ export default function TurfDetail() {
                       <MessageSquare className="w-5 h-5 text-primary" /> Reviews
                       <span className="text-sm font-normal text-muted-foreground">({reviews.length})</span>
                     </h3>
+                    {user && (
+                      <button
+                        onClick={() => setIsReviewModalOpen(true)}
+                        className="text-xs font-bold text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors border border-primary/20"
+                      >
+                        Write a Review
+                      </button>
+                    )}
                   </div>
 
                   {reviews.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 bg-secondary/20 rounded-2xl border border-dashed border-border text-center">
                       <Star className="w-8 h-8 text-muted-foreground/30 mb-2" />
-                      <p className="text-sm text-muted-foreground">No reviews yet. Be the first to review!</p>
+                      <p className="text-sm text-muted-foreground mb-4">No reviews yet. Be the first to review!</p>
+                      {!user && (
+                        <button onClick={() => navigate("/login")} className="text-xs font-bold text-primary underline">
+                          Log in to leave a review
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -406,7 +461,7 @@ export default function TurfDetail() {
                       )}
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {turfSlots.map((slot) => {
+                      {turfSlots.filter((slot) => !isSlotPast(slot) || bookedSlots.includes(slot)).map((slot) => {
                         const isSelected = selectedSlots.includes(slot);
                         const isBooked = bookedSlots.includes(slot);
                         return (

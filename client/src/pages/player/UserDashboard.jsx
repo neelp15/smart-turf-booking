@@ -4,7 +4,7 @@ import { useScrollReveal } from "../../hooks/useScrollReveal";
 import { 
   Calendar, MapPin, Clock, Heart, Loader2, XCircle, Star, MessageSquare,
   IndianRupee, Activity, TrendingUp, Flame, QrCode, RotateCcw, Share2, PlusCircle, ArrowRight, Users, 
-  Settings, User, Phone, Save, KeyRound
+  Settings, User, Phone, Save, KeyRound, Mail, Smartphone, Bell
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -67,9 +67,11 @@ export default function UserDashboard() {
         }
 
         // Check which turfs user has already reviewed
+        // Include both explicitly-completed/cancelled AND time-expired confirmed bookings
         const reviewed = new Set();
         for (const booking of bookingsData) {
-          if (booking.status !== "confirmed") {
+          const alreadyPast = booking.status !== "confirmed" || isBookingExpired(booking);
+          if (alreadyPast) {
             const hasReviewed = await hasUserReviewedTurf(user.uid, booking.turfId);
             if (hasReviewed) reviewed.add(booking.turfId);
           }
@@ -101,8 +103,35 @@ export default function UserDashboard() {
     setReviewedTurfs(prev => new Set([...prev, turfId]));
   };
 
-  const upcoming = bookings.filter((b) => b.status === "confirmed");
-  const history = bookings.filter((b) => b.status !== "confirmed");
+  // A booking is "expired" when it is still confirmed in Firestore but the
+  // booking date + last slot time has already passed in real time.
+  function isBookingExpired(booking) {
+    if (booking.status !== "confirmed") return false;
+    try {
+      const lastSlot = Array.isArray(booking.slots) && booking.slots.length > 0
+        ? booking.slots[booking.slots.length - 1]
+        : booking.slot || null;
+      if (!lastSlot) return false;
+
+      const match = lastSlot.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
+      if (!match) return false;
+      let h = parseInt(match[1], 10);
+      const m = parseInt(match[2] || "0", 10);
+      const period = match[3].toUpperCase();
+      if (period === "AM" && h === 12) h = 0;
+      if (period === "PM" && h !== 12) h += 12;
+
+      // booking.date is "YYYY-MM-DD"; parse it as local midnight
+      const [year, month, day] = booking.date.split("-").map(Number);
+      const slotEnd = new Date(year, month - 1, day, h + 1, m, 0); // slot end = start + 1 h
+      return slotEnd <= new Date();
+    } catch {
+      return false;
+    }
+  }
+
+  const upcoming = bookings.filter((b) => b.status === "confirmed" && !isBookingExpired(b));
+  const history  = bookings.filter((b) => b.status !== "confirmed" || isBookingExpired(b));
 
   // --- Part A: Enhanced Stats & Gamification ---
   const stats = useMemo(() => {
@@ -168,6 +197,15 @@ export default function UserDashboard() {
         <BookingQRModal
           booking={qrModal}
           onClose={() => setQrModal(null)}
+        />
+      )}
+      {reviewModal && (
+        <ReviewModal
+          turfId={reviewModal.turfId}
+          turfName={reviewModal.turfName}
+          bookingId={reviewModal.bookingId}
+          onClose={() => setReviewModal(null)}
+          onSuccess={() => handleReviewSuccess(reviewModal.turfId)}
         />
       )}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -347,6 +385,7 @@ export default function UserDashboard() {
                           key={b.id} 
                           booking={b} 
                           index={i}
+                          isExpired={isBookingExpired(b)}
                           isReviewed={reviewedTurfs.has(b.turfId)}
                           onReview={() => setReviewModal({ turfId: b.turfId, turfName: b.turfName, bookingId: b.id })}
                           onPlayAgain={() => navigate(`/turf/${b.turfId}`)}
@@ -414,7 +453,9 @@ function ProfileSettingsForm({ user, resetPassword }) {
   const [formData, setFormData] = useState({
     name: user?.displayName || user?.name || "",
     phone: user?.phone || "",
-    favSport: user?.favSport || ""
+    favSport: user?.favSport || "",
+    emailNotifications: user?.emailNotifications ?? true,
+    smsNotifications: user?.smsNotifications ?? false,
   });
 
   const handleSubmit = async (e) => {
@@ -491,6 +532,58 @@ function ProfileSettingsForm({ user, resetPassword }) {
           </div>
         </div>
 
+        <div className="pt-6 border-t border-border">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
+            <Bell className="w-4 h-4 text-primary" /> Notification Preferences
+          </h3>
+          
+          <div className="space-y-4">
+            {/* Email Notifications Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Email Notifications</p>
+                  <p className="text-[10px] text-muted-foreground">Receive booking confirmations and updates via email</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={formData.emailNotifications}
+                  onChange={(e) => setFormData({ ...formData, emailNotifications: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-inner"></div>
+              </label>
+            </div>
+
+            {/* SMS Notifications Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-secondary/30">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">SMS Notifications</p>
+                  <p className="text-[10px] text-muted-foreground">Get important alerts and reminders via text message</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="sr-only peer"
+                  checked={formData.smsNotifications}
+                  onChange={(e) => setFormData({ ...formData, smsNotifications: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-inner"></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <button
           type="submit"
           disabled={loading}
@@ -516,8 +609,9 @@ function ProfileSettingsForm({ user, resetPassword }) {
   );
 }
 
-function BookingCard({ booking, index, onCancel, onReview, isReviewed, onShowQR, onPlayAgain }) {
+function BookingCard({ booking, index, onCancel, onReview, isReviewed, isExpired, onShowQR, onPlayAgain }) {
   const [timeLeft, setTimeLeft] = useState("");
+  const displayStatus = isExpired && booking.status === "confirmed" ? "completed" : booking.status;
 
   useEffect(() => {
     if (booking.status !== "confirmed") return;
@@ -559,8 +653,8 @@ function BookingCard({ booking, index, onCancel, onReview, isReviewed, onShowQR,
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1.5">
           <h4 className="font-semibold text-foreground">{booking.turfName}</h4>
-          <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${statusStyles[booking.status]}`}>
-            {booking.status}
+          <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${statusStyles[displayStatus]}`}>
+            {displayStatus}
           </span>
           {/* Reviewed badge */}
           {isReviewed && (
