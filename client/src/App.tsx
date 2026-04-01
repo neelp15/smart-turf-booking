@@ -18,8 +18,10 @@ import MyTurfs from "./pages/owner/MyTurfs";
 import EditTurf from "./pages/owner/EditTurf";
 import OwnerBookings from "./pages/owner/OwnerBookings";
 import OwnerTurfDetail from "./pages/owner/OwnerTurfDetail";
+import OwnerAnalytics from "./pages/owner/OwnerAnalytics";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/auth/ResetPassword";
+import { Chatbot } from "./components/chat/Chatbot";
 
 const queryClient = new QueryClient();
 
@@ -60,8 +62,12 @@ const App = () => (
             <Route path="/owner/turf/:id" element={
               <ProtectedRoute allowedRole="owner"><OwnerTurfDetail /></ProtectedRoute>
             } />
+            <Route path="/owner/analytics" element={
+              <ProtectedRoute allowedRole="owner"><OwnerAnalytics /></ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Chatbot />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
