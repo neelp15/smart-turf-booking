@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
-
 import Home from "./pages/player/Home";
 import TurfListing from "./pages/player/TurfListing";
 import TurfDetail from "./pages/player/TurfDetail";

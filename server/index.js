@@ -18,6 +18,7 @@ const turfRoutes = require('./routes/turfRoutes');
 const authRoutes = require('./routes/authRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const broadcastRoutes = require('./routes/broadcastRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -33,6 +34,7 @@ app.use('/api/turfs', turfRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/broadcasts', broadcastRoutes);
 
 // TEST ROUTE - NOW SENDS REAL EMAIL
 app.post('/api/auth/test-reset', async (req, res) => {

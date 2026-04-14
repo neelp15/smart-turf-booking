@@ -32,7 +32,10 @@ service cloud.firestore {
     // - Only players can create bookings for themselves
     match /bookings/{bookingId} {
       allow read: if true; // Public needed for calendar availability checks
-      allow create: if isAuthenticated() && isPlayer(request.auth.uid) && request.resource.data.userUid == request.auth.uid;
+      allow create: if isAuthenticated() && (
+        (isPlayer(request.auth.uid) && request.resource.data.userUid == request.auth.uid) ||
+        (isOwner(request.auth.uid) && get(/databases/$(database)/documents/turfs/$(request.resource.data.turfId)).data.ownerUid == request.auth.uid)
+      );
       allow update, delete: if isAuthenticated() && (
         resource.data.userUid == request.auth.uid || 
         get(/databases/$(database)/documents/turfs/$(resource.data.turfId)).data.ownerUid == request.auth.uid
@@ -62,6 +65,12 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAuthenticated() && isPlayer(request.auth.uid) && request.resource.data.userUid == request.auth.uid;
       allow update, delete: if isAuthenticated() && resource.data.userUid == request.auth.uid;
+    }
+
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isOwner(request.auth.uid) && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
     }
 
     // OTP VERIFICATION: Only the server (admin) should manage these.

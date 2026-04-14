@@ -14,6 +14,9 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { getOwnerTurfs, subscribeToOwnerBookings, getTurfReviews } from "../../services/firebase/turfService";
 import ProfileSettingsModal from "../../components/owner/ProfileSettingsModal";
+import ManualBookingModal from "../../components/owner/ManualBookingModal";
+import BroadcastModal from "../../components/owner/BroadcastModal";
+import VerificationModal from "../../components/owner/VerificationModal";
 
 const COLORS = ["#10b981","#6366f1","#f59e0b","#8b5cf6","#ec4899","#14b8a6"];
 
@@ -43,6 +46,10 @@ export default function OwnerDashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [timeRange, setTimeRange] = useState("7d");
   const [sortField, setSortField] = useState("revenue");
+
+  const [showManualBooking, setShowManualBooking] = useState(false);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -579,15 +586,15 @@ export default function OwnerDashboard() {
           <div className="glass-card p-6 md:p-8 rounded-3xl border border-white/10">
             <div className="mb-8"><h3 className="font-display font-bold text-xl text-foreground">Quick Actions</h3><p className="text-xs text-muted-foreground mt-1">Manage your business operations instantly</p></div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all group">
+              <button onClick={() => setShowManualBooking(true)} className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-all group">
                 <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground group-hover:scale-110 transition-transform"><Plus className="w-5 h-5"/></div>
                 <span className="text-xs font-bold text-foreground">New Booking</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all group">
+              <button onClick={() => setShowBroadcast(true)} className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all group">
                 <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground group-hover:scale-110 transition-transform"><MessageSquare className="w-5 h-5"/></div>
                 <span className="text-xs font-bold text-foreground">Broadcast</span>
               </button>
-              <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group">
+              <button onClick={() => setShowVerification(true)} className="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group">
                 <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-foreground group-hover:scale-110 transition-transform"><ShieldCheck className="w-5 h-5"/></div>
                 <span className="text-xs font-bold text-foreground">Verification</span>
               </button>
@@ -615,6 +622,9 @@ export default function OwnerDashboard() {
       )}
 
       {showSettings && <ProfileSettingsModal user={user} onClose={()=>setShowSettings(false)}/>}
+      {showManualBooking && <ManualBookingModal user={user} onClose={()=>setShowManualBooking(false)}/>}
+      {showBroadcast && <BroadcastModal user={user} onClose={()=>setShowBroadcast(false)}/>}
+      {showVerification && <VerificationModal user={user} onClose={()=>setShowVerification(false)}/>}
     </div>
   );
 }
